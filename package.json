@@ -11,7 +11,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "^7.0.1",
+    "@prisma/client": "^5.22.0",
     "googleapis": "^166.0.0",
     "next": "16.0.5",
     "next-auth": "^5.0.0-beta.30",
@@ -27,7 +27,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.5",
-    "prisma": "^7.0.1",
+    "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
