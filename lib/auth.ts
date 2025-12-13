@@ -4,6 +4,8 @@ import Google from "next-auth/providers/google";
 import { prisma } from "./db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   providers: [
     Google({
@@ -29,5 +31,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: {
     signIn: "/login",
+    error: "/auth/error",
+  },
+  session: {
+    strategy: "database",
   },
 });
