@@ -1,12 +1,11 @@
 "use client";
 
 import { Home, History, PieChart, Repeat, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { CalculatorDrawer } from "@/components/expense/CalculatorDrawer";
-import Link from "next/link";
+import { CalculatorDrawer } from "@/components/forest/CalculatorDrawer";
 import { usePathname } from "next/navigation";
+import { NavButton } from "@/components/leaf/NavButton";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -67,36 +66,5 @@ export function BottomNav() {
         }}
       />
     </>
-  );
-}
-
-function NavButton({
-  href,
-  icon: Icon,
-  label,
-  isActive,
-}: {
-  href: string;
-  icon: React.ElementType;
-  label: string;
-  isActive: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 relative cursor-pointer active:scale-95 transition-transform rounded-2xl",
-        isActive ? "text-indigo-600" : "text-gray-400 hover:bg-gray-50/50"
-      )}
-    >
-      {isActive && (
-        <motion.div
-          layoutId="navIndicator"
-          className="absolute -top-1 w-8 h-1 rounded-full bg-indigo-600"
-        />
-      )}
-      <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-      <span className="text-[9px] font-bold tracking-tight">{label}</span>
-    </Link>
   );
 }

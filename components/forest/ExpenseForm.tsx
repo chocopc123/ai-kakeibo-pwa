@@ -88,7 +88,7 @@ export function ExpenseForm() {
               >
                 <div
                   className={cn(
-                    "absolute inset-0 opacity-10 bg-gradient-to-r",
+                    "absolute inset-0 opacity-10 bg-linear-to-r",
                     selectedCategory.color
                   )}
                 />
@@ -141,7 +141,7 @@ export function ExpenseForm() {
                       <motion.div
                         layoutId="activeCategory"
                         className={cn(
-                          "absolute inset-0 rounded-xl opacity-10 bg-gradient-to-br",
+                          "absolute inset-0 rounded-xl opacity-10 bg-linear-to-br",
                           cat.color
                         )}
                       />
