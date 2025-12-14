@@ -18,16 +18,16 @@ export function BottomNav() {
       <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 pointer-events-none">
         <div className="glass-panel pointer-events-auto mx-auto max-w-md rounded-[32px] p-2 flex items-center justify-between shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/50 bg-white/80 backdrop-blur-xl">
           <NavButton
-            href="/dashboard"
+            href="/"
             icon={Home}
             label="Home"
-            isActive={isActive("/dashboard")}
+            isActive={isActive("/")}
           />
           <NavButton
-            href="/dashboard/history"
+            href="/history"
             icon={History}
             label="History"
-            isActive={isActive("/dashboard/history")}
+            isActive={isActive("/history")}
           />
 
           {/* Central Add Button */}
@@ -43,16 +43,16 @@ export function BottomNav() {
           </div>
 
           <NavButton
-            href="/dashboard/assets"
+            href="/assets"
             icon={PieChart}
             label="Assets"
-            isActive={isActive("/dashboard/assets")}
+            isActive={isActive("/assets")}
           />
           <NavButton
-            href="/dashboard/recurring"
+            href="/recurring"
             icon={Repeat}
             label="Recurring"
-            isActive={isActive("/dashboard/recurring")}
+            isActive={isActive("/recurring")}
           />
         </div>
       </div>
