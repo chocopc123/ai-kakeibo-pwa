@@ -47,6 +47,50 @@ model User {
   subscription      Subscription?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+  expenses          Expense[]
+  categories        Category[]
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int
+  date      DateTime
+  note      String?
+  
+  // Link to Category
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  // Link to User
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  userId    String
+  label     String
+  icon      String
+  color     String    // Tailwind class string e.g., "bg-orange-100 text-orange-600"
+  
+  // Hierarchy
+  parentId  String?
+  parent    Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryHierarchy")
+
+  expenses  Expense[]
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model VerificationToken {
