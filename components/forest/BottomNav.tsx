@@ -6,12 +6,42 @@ import { useState } from "react";
 import { CalculatorDrawer } from "@/components/forest/CalculatorDrawer";
 import { usePathname } from "next/navigation";
 import { NavButton } from "@/components/leaf/NavButton";
+import { useSWRConfig } from "swr";
 
 export function BottomNav() {
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { mutate } = useSWRConfig();
 
   const isActive = (path: string) => pathname === path;
+
+  const handleSave = async (data: any) => {
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: data.amount,
+          date: data.date,
+          categoryId: data.category.id, // Ensure we send ID
+          note: data.note,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save expense");
+      }
+
+      // Revalidate the expense list
+      mutate("/api/expenses");
+      setIsDrawerOpen(false);
+    } catch (error) {
+      console.error("Save error:", error);
+      alert("保存に失敗しました。");
+    }
+  };
 
   return (
     <>
@@ -60,10 +90,7 @@ export function BottomNav() {
       <CalculatorDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        onSave={(data) => {
-          console.log("Saved", data);
-          setIsDrawerOpen(false);
-        }}
+        onSave={handleSave}
       />
     </>
   );

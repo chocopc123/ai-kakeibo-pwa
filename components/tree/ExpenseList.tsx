@@ -1,50 +1,26 @@
 "use client";
 
+import useSWR from "swr";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const MOCK_DATA = [
-  {
-    id: 1,
-    date: "2025-12-14",
-    category: "food",
-    categoryLabel: "食費",
-    categoryIcon: "🍔",
-    description: "ランチ（パスタ）",
-    amount: 1200,
-    color: "bg-orange-100 text-orange-600",
-  },
-  {
-    id: 2,
-    date: "2025-12-14",
-    category: "transport",
-    categoryLabel: "交通費",
-    categoryIcon: "qh",
-    description: "タクシー代",
-    amount: 2500,
-    color: "bg-blue-100 text-blue-600",
-  },
-  {
-    id: 3,
-    date: "2025-12-13",
-    category: "daily",
-    categoryLabel: "日用品",
-    categoryIcon: "🧻",
-    description: "トイレットペーパー他",
-    amount: 850,
-    color: "bg-green-100 text-green-600",
-  },
-  {
-    id: 4,
-    date: "2025-12-12",
-    category: "entertainment",
-    categoryLabel: "交際費",
-    categoryIcon: "🍺",
-    description: "飲み会",
-    amount: 5000,
-    color: "bg-purple-100 text-purple-600",
-  },
-];
+// Define the API response type for an expense
+// (Include category based on the prisma include)
+interface ApiExpense {
+  id: string;
+  amount: number;
+  date: string;
+  note: string | null;
+  category: {
+    id: string;
+    label: string;
+    icon: string;
+    color: string;
+  };
+}
+
+// Fetcher function for SWR
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const container = {
   hidden: { opacity: 0 },
@@ -62,6 +38,28 @@ const item = {
 };
 
 export function ExpenseList() {
+  const {
+    data: expenses,
+    error,
+    isLoading,
+  } = useSWR<ApiExpense[]>("/api/expenses", fetcher);
+
+  if (isLoading) {
+    return <div className="text-center p-8 text-gray-500">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-8 text-red-500">
+        Failed to load expenses
+      </div>
+    );
+  }
+
+  if (!expenses || expenses.length === 0) {
+    return <div className="text-center p-8 text-gray-400">No expenses yet</div>;
+  }
+
   return (
     <motion.div
       variants={container}
@@ -80,7 +78,7 @@ export function ExpenseList() {
       </div>
 
       <div className="space-y-4 px-2">
-        {MOCK_DATA.map((data, index) => (
+        {expenses.map((data) => (
           <motion.div
             key={data.id}
             variants={item}
@@ -94,17 +92,21 @@ export function ExpenseList() {
               <div
                 className={cn(
                   "w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-xs transition-transform group-hover:scale-110",
-                  data.color
+                  data.category.color
                 )}
               >
-                {data.categoryIcon}
+                {data.category.icon}
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-gray-400 tracking-wide uppercase">
-                  {data.date.replace(/-/g, ".")}
+                  {/* Format date: YYYY-MM-DD to YYYY.MM.DD */}
+                  {new Date(data.date)
+                    .toISOString()
+                    .split("T")[0]
+                    .replace(/-/g, ".")}
                 </span>
                 <span className="text-gray-800 font-bold text-sm">
-                  {data.description}
+                  {data.note || data.category.label}
                 </span>
               </div>
             </div>
@@ -114,7 +116,7 @@ export function ExpenseList() {
                 ¥{data.amount.toLocaleString()}
               </span>
               <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                {data.categoryLabel}
+                {data.category.label}
               </span>
             </div>
           </motion.div>
