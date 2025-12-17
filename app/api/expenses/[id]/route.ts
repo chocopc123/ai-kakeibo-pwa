@@ -1,5 +1,13 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { fetchDatabaseFile, saveDatabaseFile } from "@/lib/google/storage";
+import {
+  initDB,
+  exportDB,
+  getExpenseById,
+  updateExpense,
+  deleteExpense,
+} from "@/lib/sqlite/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -30,23 +38,22 @@ export async function DELETE(req: Request, context: RouteContext) {
 
     const { id } = await context.params;
 
-    // Verify ownership before deleting
-    const count = await prisma.expense.count({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    // 1. Fetch & Init
+    const fileData = await fetchDatabaseFile();
+    await initDB(fileData || undefined);
 
-    if (count === 0) {
+    // 2. Check Existence & Ownership
+    const existing = getExpenseById(id);
+    if (!existing || existing.userId !== session.user.id) {
       return new NextResponse("Not Found or Unauthorized", { status: 404 });
     }
 
-    await prisma.expense.delete({
-      where: {
-        id,
-      },
-    });
+    // 3. Delete
+    deleteExpense(id);
+
+    // 4. Save
+    const newData = exportDB();
+    await saveDatabaseFile(newData);
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
@@ -66,34 +73,43 @@ export async function PATCH(req: Request, context: RouteContext) {
     const json = await req.json();
     const body = expensePatchSchema.parse(json);
 
-    // Verify ownership
-    const existing = await prisma.expense.findUnique({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    // 1. Fetch & Init
+    const fileData = await fetchDatabaseFile();
+    await initDB(fileData || undefined);
 
-    if (!existing) {
+    // 2. Check Existence & Ownership
+    const existing = getExpenseById(id);
+    if (!existing || existing.userId !== session.user.id) {
       return new NextResponse("Not Found or Unauthorized", { status: 404 });
     }
 
+    // 3. Prepare Update
     const updateData: any = { ...body };
     if (body.date) {
       updateData.date = new Date(body.date);
     }
 
-    const expense = await prisma.expense.update({
-      where: {
-        id,
-      },
-      data: updateData,
-      include: {
-        category: true,
-      },
+    // Merge existing with updates locally to pass to updateExpense helper
+    const mergedExpense = {
+      ...existing,
+      ...updateData,
+    };
+
+    // 4. Update in SQLite
+    updateExpense(mergedExpense);
+
+    // 5. Save
+    const newData = exportDB();
+    await saveDatabaseFile(newData);
+
+    // 6. Fetch Category for response
+    // If categoryId changed, we fetch the new one, otherwise the old one
+    const categoryId = mergedExpense.categoryId;
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId },
     });
 
-    return NextResponse.json(expense);
+    return NextResponse.json({ ...mergedExpense, category });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new NextResponse("Invalid request data", { status: 400 });

@@ -1,5 +1,10 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { fetchDatabaseFile } from "@/lib/google/storage";
+import {
+  initDB,
+  getExpensesByDateRange,
+  getAllExpensesForAssets,
+} from "@/lib/sqlite/client";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -14,40 +19,31 @@ export async function GET(req: Request) {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    // Get current month's expenses and income
-    const monthlyStats = await prisma.expense.groupBy({
-      by: ["type"],
-      where: {
-        userId,
-        date: {
-          gte: startOfMonth,
-          lte: endOfMonth,
-        },
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+    // 1. Fetch & Init
+    const fileData = await fetchDatabaseFile();
+    await initDB(fileData || undefined);
 
-    // Get all-time stats for Total Assets
-    const allTimeStats = await prisma.expense.groupBy({
-      by: ["type"],
-      where: {
-        userId,
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+    // 2. Calculate Monthly Stats
+    const monthlyExpenses = getExpensesByDateRange(
+      userId,
+      startOfMonth,
+      endOfMonth
+    );
 
-    const getSum = (stats: any[], type: string) =>
-      stats.find((s) => s.type === type)?._sum.amount || 0;
+    const monthlyExpense = monthlyExpenses
+      .filter((e) => e.type === "expense")
+      .reduce((sum, e) => sum + e.amount, 0);
 
-    const monthlyExpense = getSum(monthlyStats, "expense");
-    const monthlyIncome = getSum(monthlyStats, "income");
+    const monthlyIncome = monthlyExpenses
+      .filter((e) => e.type === "income")
+      .reduce((sum, e) => sum + e.amount, 0);
 
-    const totalExpense = getSum(allTimeStats, "expense");
-    const totalIncome = getSum(allTimeStats, "income");
+    // 3. Calculate All-time Stats for Total Assets
+    const totals = getAllExpensesForAssets(userId);
+
+    // totals is array of { type: string, total: number }
+    const totalExpense = totals.find((t) => t.type === "expense")?.total || 0;
+    const totalIncome = totals.find((t) => t.type === "income")?.total || 0;
 
     const totalAssets = totalIncome - totalExpense;
 

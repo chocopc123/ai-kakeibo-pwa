@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useSWR from "swr";
 import {
   ArrowUpRight,
@@ -20,14 +21,31 @@ interface Stats {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function DashboardPage() {
-  const { data: stats, isLoading } = useSWR<Stats>(
-    "/api/expenses/stats",
-    fetcher
-  );
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useSWR<Stats>("/api/expenses/stats", fetcher);
 
   if (isLoading) {
     return (
       <div className="p-8 text-center text-gray-500">Loading dashboard...</div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center flex flex-col items-center justify-center space-y-4 pt-20">
+        <p className="text-gray-500 font-medium">
+          Please sign in to view stats
+        </p>
+        <Link
+          href="/api/auth/signin"
+          className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-indigo-500/30 active:scale-95 transition-transform"
+        >
+          Sign In
+        </Link>
+      </div>
     );
   }
 

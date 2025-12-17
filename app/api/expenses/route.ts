@@ -1,5 +1,12 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/db"; // Still needed for Category? Yes, we fetch categories from Postgres.
+import { fetchDatabaseFile, saveDatabaseFile } from "@/lib/google/storage";
+import {
+  initDB,
+  exportDB,
+  getExpenses,
+  createExpense,
+} from "@/lib/sqlite/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -9,7 +16,7 @@ const expenseSchema = z.object({
   date: z
     .string()
     .datetime({ offset: true })
-    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)), // Allow ISO or YYYY-MM-DD
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   categoryId: z.string().min(1),
   note: z.string().optional(),
   type: z.enum(["expense", "income"]).optional().default("expense"),
@@ -26,21 +33,31 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    const expenses = await prisma.expense.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      include: {
-        category: true,
-      },
-      orderBy: {
-        date: "desc",
-      },
-      take: limit,
-      skip: offset,
+    // 1. Fetch DB File and Init
+    const fileData = await fetchDatabaseFile();
+    await initDB(fileData || undefined);
+
+    // 2. Query Expenses (SQLite)
+    // Note: getExpenses currently fetches ALL for user.
+    // We can optimize strict SQL pagination later, for now memory is fine for MVP.
+    const allExpenses = getExpenses(session.user.id);
+
+    // 3. Fetch all categories from Postgres (needed for join)
+    const categories = await prisma.category.findMany({
+      where: { userId: session.user.id },
     });
 
-    return NextResponse.json(expenses);
+    // 4. Manual Join & Pagination
+    const joinedExpenses = allExpenses.map((e) => {
+      const category = categories.find((c) => c.id === e.categoryId) || null;
+      // @ts-expect-error - Manual join for response
+      return { ...e, category };
+    });
+
+    // Already sorted by date desc in getExpenses SQL
+    const paginatedExpenses = joinedExpenses.slice(offset, offset + limit);
+
+    return NextResponse.json(paginatedExpenses);
   } catch (error) {
     console.error("[EXPENSES_GET]", error);
     return new NextResponse("Internal Server Error", { status: 500 });
@@ -57,24 +74,39 @@ export async function POST(req: Request) {
     const json = await req.json();
     const body = expenseSchema.parse(json);
 
-    // Ensure date is a DateTime object
+    // Ensure date is a DateTime object (helper will convert to string)
     const date = new Date(body.date);
 
-    const expense = await prisma.expense.create({
-      data: {
-        userId: session.user.id,
-        amount: body.amount,
-        date: date,
-        categoryId: body.categoryId,
-        note: body.note,
-        type: body.type,
-      },
-      include: {
-        category: true,
-      },
+    // 1. Fetch & Init
+    const fileData = await fetchDatabaseFile();
+    await initDB(fileData || undefined);
+
+    // 2. Create Object
+    const newExpense = {
+      id: crypto.randomUUID(),
+      userId: session.user.id,
+      amount: body.amount,
+      date: date,
+      categoryId: body.categoryId,
+      note: body.note ?? null,
+      type: body.type,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // 3. Insert into SQLite
+    createExpense(newExpense);
+
+    // 4. Export & Save
+    const newData = exportDB();
+    await saveDatabaseFile(newData);
+
+    // 5. Fetch Category for response
+    const category = await prisma.category.findUnique({
+      where: { id: body.categoryId },
     });
 
-    return NextResponse.json(expense);
+    return NextResponse.json({ ...newExpense, category });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new NextResponse("Invalid request data", { status: 400 });
