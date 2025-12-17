@@ -100,6 +100,11 @@ export function CalculatorDrawer({
   type Step = "calculator" | "details" | "categoryPicker" | "categoryEditor";
   const [step, setStep] = useState<Step>("calculator");
 
+  // Transaction Type
+  const [transactionType, setTransactionType] = useState<"expense" | "income">(
+    "expense"
+  );
+
   const [expression, setExpression] = useState("0");
   const [finalAmount, setFinalAmount] = useState<number | null>(null);
 
@@ -248,6 +253,7 @@ export function CalculatorDrawer({
   const handleSaveExpense = () => {
     if (finalAmount !== null) {
       onSave({
+        type: transactionType,
         amount: finalAmount,
         category: selectedCategory,
         date: new Date().toISOString(),
@@ -261,6 +267,7 @@ export function CalculatorDrawer({
   const resetState = () => {
     setExpression("0");
     setStep("calculator");
+    setTransactionType("expense");
     setNote("");
     setFinalAmount(null);
     setCurrentPickerPath([]);
@@ -326,6 +333,8 @@ export function CalculatorDrawer({
                     onClear={handleClear}
                     onEqual={handleEqual}
                     onNext={handleNext}
+                    type={transactionType}
+                    onTypeChange={setTransactionType}
                   />
                 </motion.div>
               )}
@@ -356,6 +365,7 @@ export function CalculatorDrawer({
                     }
                     onOpenPatternModal={() => setIsPatternModalOpen(true)}
                     onSave={handleSaveExpense}
+                    type={transactionType}
                   />
                 </motion.div>
               )}

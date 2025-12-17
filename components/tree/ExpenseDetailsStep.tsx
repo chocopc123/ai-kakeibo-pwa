@@ -19,6 +19,7 @@ interface ExpenseDetailsStepProps {
   onChangeCustomField: (index: number, val: string) => void;
   onOpenPatternModal: () => void;
   onSave: () => void;
+  type: "expense" | "income";
 }
 
 export default function ExpenseDetailsStep({
@@ -32,7 +33,15 @@ export default function ExpenseDetailsStep({
   onChangeCustomField,
   onOpenPatternModal,
   onSave,
+  type,
 }: ExpenseDetailsStepProps) {
+  const isIncome = type === "income";
+  const themeColor = isIncome ? "text-green-600" : "text-indigo-600";
+  const themeBg = isIncome ? "bg-green-50" : "bg-indigo-50";
+  const themeButton = isIncome
+    ? "from-green-600 to-emerald-600 shadow-green-500/30"
+    : "from-indigo-600 to-purple-600 shadow-indigo-500/30";
+
   return (
     <div className="flex flex-col h-full bg-gray-50 rounded-[32px] p-6 overflow-y-auto">
       <div className="flex items-center gap-4 mb-6">
@@ -43,9 +52,15 @@ export default function ExpenseDetailsStep({
           <ChevronLeft size={20} />
         </button>
         <div>
-          <p className="text-xs font-bold text-gray-400 uppercase">Expense</p>
-          <h2 className="text-2xl font-black text-gray-900">
-            ¥{amount?.toLocaleString()}
+          <p className="text-xs font-bold text-gray-400 uppercase">
+            {isIncome ? "Income" : "Expense"}
+          </p>
+          <h2
+            className={`text-2xl font-black ${
+              isIncome ? "text-green-600" : "text-gray-900"
+            }`}
+          >
+            {isIncome ? "+" : ""}¥{amount?.toLocaleString()}
           </h2>
         </div>
       </div>
@@ -63,7 +78,9 @@ export default function ExpenseDetailsStep({
             <span className="text-2xl">{category.icon}</span>
             <span className="font-bold text-gray-900">{category.label}</span>
           </div>
-          <div className="flex items-center gap-2 text-indigo-600 text-sm font-bold">
+          <div
+            className={`flex items-center gap-2 ${themeColor} text-sm font-bold`}
+          >
             Change <ChevronRight size={16} />
           </div>
         </button>
@@ -90,7 +107,7 @@ export default function ExpenseDetailsStep({
           </label>
           <button
             onClick={onOpenPatternModal}
-            className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md flex items-center gap-1 active:scale-95 transition-transform"
+            className={`text-xs font-bold ${themeColor} ${themeBg} px-2 py-1 rounded-md flex items-center gap-1 active:scale-95 transition-transform`}
           >
             <PlusCircle size={12} /> Add Pattern
           </button>
@@ -128,7 +145,7 @@ export default function ExpenseDetailsStep({
       <div className="absolute bottom-6 left-6 right-6">
         <button
           onClick={onSave}
-          className="w-full bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-[24px] py-4 font-bold shadow-lg shadow-indigo-500/30 active:scale-95 transition-transform flex items-center justify-center gap-2"
+          className={`w-full bg-linear-to-r ${themeButton} text-white rounded-[24px] py-4 font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2`}
         >
           <Check size={20} strokeWidth={3} />
           Save Transaction

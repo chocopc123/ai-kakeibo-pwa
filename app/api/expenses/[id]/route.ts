@@ -12,12 +12,13 @@ const expensePatchSchema = z.object({
     .optional(),
   categoryId: z.string().min(1).optional(),
   note: z.string().optional(),
+  type: z.enum(["expense", "income"]).optional(),
 });
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function DELETE(req: Request, context: RouteContext) {
@@ -27,12 +28,12 @@ export async function DELETE(req: Request, context: RouteContext) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { params } = context;
+    const { id } = await context.params;
 
     // Verify ownership before deleting
     const count = await prisma.expense.count({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     });
@@ -43,7 +44,7 @@ export async function DELETE(req: Request, context: RouteContext) {
 
     await prisma.expense.delete({
       where: {
-        id: params.id,
+        id,
       },
     });
 
@@ -61,14 +62,14 @@ export async function PATCH(req: Request, context: RouteContext) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { params } = context;
+    const { id } = await context.params;
     const json = await req.json();
     const body = expensePatchSchema.parse(json);
 
     // Verify ownership
     const existing = await prisma.expense.findUnique({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     });
@@ -84,7 +85,7 @@ export async function PATCH(req: Request, context: RouteContext) {
 
     const expense = await prisma.expense.update({
       where: {
-        id: params.id,
+        id,
       },
       data: updateData,
       include: {

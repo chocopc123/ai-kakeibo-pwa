@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../lib/generated/client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // NextAuth.js用のモデル
@@ -54,6 +54,7 @@ model User {
 model Expense {
   id        String   @id @default(cuid())
   userId    String
+  type      String   @default("expense") // "expense" | "income"
   amount    Int
   date      DateTime
   note      String?

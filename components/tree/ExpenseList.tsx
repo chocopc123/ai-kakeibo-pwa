@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 // (Include category based on the prisma include)
 interface ApiExpense {
   id: string;
+  type: "expense" | "income";
   amount: number;
   date: string;
   note: string | null;
@@ -112,8 +113,13 @@ export function ExpenseList() {
             </div>
 
             <div className="flex flex-col items-end">
-              <span className="text-lg font-bold text-gray-900">
-                ¥{data.amount.toLocaleString()}
+              <span
+                className={`text-lg font-bold ${
+                  data.type === "income" ? "text-green-600" : "text-gray-900"
+                }`}
+              >
+                {data.type === "income" ? "+" : ""}¥
+                {data.amount.toLocaleString()}
               </span>
               <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                 {data.category.label}

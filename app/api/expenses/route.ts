@@ -12,6 +12,7 @@ const expenseSchema = z.object({
     .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)), // Allow ISO or YYYY-MM-DD
   categoryId: z.string().min(1),
   note: z.string().optional(),
+  type: z.enum(["expense", "income"]).optional().default("expense"),
 });
 
 export async function GET(req: Request) {
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
         date: date,
         categoryId: body.categoryId,
         note: body.note,
+        type: body.type,
       },
       include: {
         category: true,

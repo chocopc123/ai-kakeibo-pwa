@@ -16,6 +16,8 @@ interface CalculatorStepProps {
   onClear: () => void;
   onEqual: () => void;
   onNext: () => void;
+  type: "expense" | "income";
+  onTypeChange: (type: "expense" | "income") => void;
 }
 
 export default function CalculatorStep({
@@ -25,16 +27,53 @@ export default function CalculatorStep({
   onClear,
   onEqual,
   onNext,
+  type,
+  onTypeChange,
 }: CalculatorStepProps) {
   return (
     <div className="flex flex-col h-full">
+      {/* Type Toggle */}
+      <div className="flex justify-center mb-6">
+        <div className="bg-gray-100 p-1 rounded-full flex w-48 relative">
+          <button
+            onClick={() => onTypeChange("expense")}
+            className={`flex-1 py-2 text-xs font-bold rounded-full transition-all z-10 ${
+              type === "expense"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            EXPENSE
+          </button>
+          <button
+            onClick={() => onTypeChange("income")}
+            className={`flex-1 py-2 text-xs font-bold rounded-full transition-all z-10 ${
+              type === "income"
+                ? "bg-white text-green-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            INCOME
+          </button>
+        </div>
+      </div>
+
       {/* Amount Display */}
       <div className="flex flex-col items-end justify-center mb-6 px-4 space-y-1">
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest self-center">
-          Amount
+        <span
+          className={`text-xs font-bold uppercase tracking-widest self-center transition-colors ${
+            type === "income" ? "text-green-500" : "text-indigo-500"
+          }`}
+        >
+          {type === "income" ? "Income Amount" : "Expense Amount"}
         </span>
         <div className="flex items-center justify-end w-full overflow-x-auto scrollbar-hide">
-          <span className="text-6xl font-black text-gray-900 tracking-tight whitespace-nowrap">
+          <span
+            className={`text-6xl font-black tracking-tight whitespace-nowrap transition-colors ${
+              type === "income" ? "text-green-500" : "text-gray-900"
+            }`}
+          >
+            {type === "income" ? "+" : ""}
             {expression.replace(/\*/g, "×").replace(/\//g, "÷")}
           </span>
         </div>
