@@ -1,13 +1,14 @@
-import initSqlJs, { Database, QueryExecResult } from "sql.js";
-import { Expense } from "@prisma/client";
+import initSqlJs, { Database } from "sql.js";
+// Use the generated client path since we have custom output in schema.prisma
+import { Expense } from "@/lib/generated/client";
+import fs from "fs";
+import path from "path";
 
 let dbInstance: Database | null = null;
 let SQL: any = null;
 
 export async function initDB(data?: Uint8Array): Promise<Database> {
   if (dbInstance) {
-    // If data is provided, strict reload might be needed, but for now assuming per-request lifecycle or singleton reuse
-    // If we want to force reload with new data:
     if (data) {
       dbInstance.close();
       dbInstance = null;
@@ -17,7 +18,19 @@ export async function initDB(data?: Uint8Array): Promise<Database> {
   }
 
   if (!SQL) {
-    SQL = await initSqlJs();
+    // Manually load the WASM binary to avoid path issues in Next.js
+    const wasmPath = path.join(
+      process.cwd(),
+      "node_modules",
+      "sql.js",
+      "dist",
+      "sql-wasm.wasm"
+    );
+    const wasmBinary = new Uint8Array(fs.readFileSync(wasmPath));
+
+    SQL = await initSqlJs({
+      wasmBinary,
+    });
   }
 
   if (data) {
