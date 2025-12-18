@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import useSWR from "swr";
 import { Drawer } from "vaul";
 import { evaluate } from "mathjs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -108,12 +109,6 @@ export function CalculatorDrawer({
   const [expression, setExpression] = useState("0");
   const [finalAmount, setFinalAmount] = useState<number | null>(null);
 
-  // Data
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [selectedCategory, setSelectedCategory] = useState<Category>(
-    INITIAL_CATEGORIES[0]
-  );
-
   // Details State
   const [note, setNote] = useState("");
   const [customFields, setCustomFields] = useState<
@@ -180,6 +175,40 @@ export function CalculatorDrawer({
     }
   };
 
+  // Data
+  const { data: apiCategories, mutate: mutateCategories } = useSWR<any[]>(
+    isOpen ? "/api/categories" : null
+  );
+
+  // Helper to transform flat categories into hierarchy
+  const buildHierarchy = (flat: any[]): Category[] => {
+    const map: Record<string, Category> = {};
+    const roots: Category[] = [];
+
+    flat.forEach((c) => {
+      map[c.id] = { ...c, children: [] };
+    });
+
+    flat.forEach((c) => {
+      if (c.parentId && map[c.parentId]) {
+        map[c.parentId].children!.push(map[c.id]);
+      } else {
+        roots.push(map[c.id]);
+      }
+    });
+
+    return roots;
+  };
+
+  const categories = apiCategories
+    ? buildHierarchy(apiCategories)
+    : INITIAL_CATEGORIES;
+
+  // Update selected category if it's no longer valid or initial
+  const [selectedCategory, setSelectedCategory] = useState<Category>(
+    INITIAL_CATEGORIES[0]
+  );
+
   // -- Helper: Find current category level in picker --
   const getCurrentLevelCategories = () => {
     if (currentPickerPath.length === 0) return categories;
@@ -209,10 +238,10 @@ export function CalculatorDrawer({
     }
   };
 
-  const handleAddCategory = (parentId?: string) => {
+  const handleAddCategory = async (parentId?: string) => {
     if (!newCatName.trim()) return;
     const newId = Math.random().toString(36).substr(2, 9);
-    const newCat: Category = {
+    const newCatData = {
       id: newId,
       label: newCatName,
       icon: newCatIcon,
@@ -220,26 +249,30 @@ export function CalculatorDrawer({
       parentId,
     };
 
-    const addRecursive = (cats: Category[]): Category[] => {
-      return cats.map((c) => {
-        if (c.id === parentId) {
-          return { ...c, children: [...(c.children || []), newCat] };
-        }
-        if (c.children) {
-          return { ...c, children: addRecursive(c.children) };
-        }
-        return c;
+    try {
+      // Optimistic Update
+      mutateCategories(
+        (current: any[] | undefined) => [...(current || []), newCatData],
+        false
+      );
+
+      setEditingCategory(null);
+      setNewCatName("");
+
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCatData),
       });
-    };
 
-    if (!parentId) {
-      setCategories((prev) => [...prev, newCat]);
-    } else {
-      setCategories((prev) => addRecursive(prev));
+      if (!res.ok) throw new Error("Failed to save category");
+
+      mutateCategories(); // Revalidate
+    } catch (error) {
+      console.error("Failed to add category:", error);
+      alert("カテゴリの保存に失敗しました。");
+      mutateCategories(); // Rollback
     }
-
-    setEditingCategory(null);
-    setNewCatName("");
   };
 
   // -- Save Logic --
