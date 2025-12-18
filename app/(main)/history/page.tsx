@@ -265,14 +265,14 @@ function HistoryListView({
       exit={{ opacity: 0, x: -20 }}
       className="space-y-4"
     >
-      <div className="bg-indigo-600 text-white p-6 rounded-[28px] shadow-lg shadow-indigo-500/20 flex flex-col items-center justify-center mb-6">
-        <span className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1">
-          Total Expense
+      <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white p-8 rounded-[32px] shadow-xl shadow-indigo-200 flex flex-col items-center justify-center mb-8 border border-white/20">
+        <span className="text-indigo-100 text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">
+          Monthly Balance
         </span>
-        <div className="flex items-baseline gap-1">
-          <span className="text-lg text-indigo-200">¥</span>
-          <h2 className="text-4xl font-black tabular-nums">
-            {Math.abs(total).toLocaleString()}
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-xl text-indigo-200/80 font-medium">¥</span>
+          <h2 className="text-5xl font-black tabular-nums tracking-tighter">
+            {total.toLocaleString()}
           </h2>
         </div>
       </div>
@@ -281,15 +281,15 @@ function HistoryListView({
         <div key={group.date} className="space-y-2">
           <div className="flex items-center justify-between px-2 text-xs font-bold text-gray-400">
             <span>{group.date}</span>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               {group.incomeTotal > 0 && (
-                <span className="text-green-600">
+                <span className="text-emerald-500 font-extrabold">
                   +¥{group.incomeTotal.toLocaleString()}
                 </span>
               )}
               {group.expenseTotal > 0 && (
-                <span className="text-gray-900">
-                  ¥{group.expenseTotal.toLocaleString()}
+                <span className="text-rose-400 font-extrabold">
+                  -¥{group.expenseTotal.toLocaleString()}
                 </span>
               )}
             </div>
@@ -315,11 +315,11 @@ function HistoryListView({
                 </div>
                 <span
                   className={cn(
-                    "font-bold",
-                    item.amount > 0 ? "text-green-600" : "text-gray-900"
+                    "font-bold text-base tabular-nums",
+                    item.amount > 0 ? "text-emerald-500" : "text-rose-500"
                   )}
                 >
-                  {item.amount > 0 ? "+" : ""}¥
+                  {item.amount > 0 ? "+" : "-"}¥
                   {Math.abs(item.amount).toLocaleString()}
                 </span>
               </div>
