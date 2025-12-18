@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-import Link from "next/link";
 import useSWR from "swr";
 import { Expense } from "@/lib/sqlite/client"; // Use shared type if possible, or define locally
 
@@ -23,6 +22,8 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 interface GroupedExpenses {
   date: string;
   total: number;
+  incomeTotal: number;
+  expenseTotal: number;
   items: (Expense & {
     category: { icon: string; label: string; color: string };
   })[];
@@ -62,19 +63,21 @@ export default function HistoryPage() {
 
     Object.keys(groups).forEach((date) => {
       const items = groups[date];
-      const total = items.reduce((sum, item) => sum + item.amount, 0); // Amount is traditionally negative for expense in typical kakeibo, but here we store positive amounts with type.
       // Let's check how we display. UI expects negative for expenses?
       // Current UI mock had negative.
       // Let's calculate total signed.
-      const signedTotal = items.reduce(
-        (sum, item) =>
-          sum + (item.type === "expense" ? -item.amount : item.amount),
-        0
-      );
+      const incomeTotal = items
+        .filter((i) => i.type === "income")
+        .reduce((sum, item) => sum + item.amount, 0);
+      const expenseTotal = items
+        .filter((i) => i.type === "expense")
+        .reduce((sum, item) => sum + item.amount, 0);
 
       groupedData.push({
         date,
-        total: signedTotal,
+        total: incomeTotal - expenseTotal,
+        incomeTotal,
+        expenseTotal,
         items: items.map((i) => ({
           ...i,
           // Adjust amount for display (negative if expense)
@@ -278,7 +281,18 @@ function HistoryListView({
         <div key={group.date} className="space-y-2">
           <div className="flex items-center justify-between px-2 text-xs font-bold text-gray-400">
             <span>{group.date}</span>
-            <span>¥{Math.abs(group.total).toLocaleString()}</span>
+            <div className="flex gap-2">
+              {group.incomeTotal > 0 && (
+                <span className="text-green-600">
+                  +¥{group.incomeTotal.toLocaleString()}
+                </span>
+              )}
+              {group.expenseTotal > 0 && (
+                <span className="text-gray-900">
+                  ¥{group.expenseTotal.toLocaleString()}
+                </span>
+              )}
+            </div>
           </div>
           <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
             {group.items.map((item) => (
