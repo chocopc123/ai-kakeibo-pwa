@@ -54,8 +54,6 @@ export const ModelName = {
   Account: 'Account',
   Session: 'Session',
   User: 'User',
-  Expense: 'Expense',
-  Category: 'Category',
   VerificationToken: 'VerificationToken',
   Subscription: 'Subscription'
 } as const
@@ -116,35 +114,6 @@ export const UserScalarFieldEnum = {
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
-
-
-export const ExpenseScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  type: 'type',
-  amount: 'amount',
-  date: 'date',
-  note: 'note',
-  categoryId: 'categoryId',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type ExpenseScalarFieldEnum = (typeof ExpenseScalarFieldEnum)[keyof typeof ExpenseScalarFieldEnum]
-
-
-export const CategoryScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  label: 'label',
-  icon: 'icon',
-  color: 'color',
-  parentId: 'parentId',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
 
 
 export const VerificationTokenScalarFieldEnum = {

@@ -1,5 +1,4 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { fetchDatabaseFile, saveDatabaseFile } from "@/lib/google/storage";
 import {
   initDB,
@@ -7,7 +6,10 @@ import {
   getExpenseById,
   updateExpense,
   deleteExpense,
+  getCategoryById,
+  isInitialized,
 } from "@/lib/sqlite/client";
+
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -39,8 +41,10 @@ export async function DELETE(req: Request, context: RouteContext) {
     const { id } = await context.params;
 
     // 1. Fetch & Init
-    const fileData = await fetchDatabaseFile();
-    await initDB(fileData || undefined);
+    if (!isInitialized()) {
+      const fileData = await fetchDatabaseFile();
+      await initDB(fileData || undefined);
+    }
 
     // 2. Check Existence & Ownership
     const existing = getExpenseById(id);
@@ -74,8 +78,10 @@ export async function PATCH(req: Request, context: RouteContext) {
     const body = expensePatchSchema.parse(json);
 
     // 1. Fetch & Init
-    const fileData = await fetchDatabaseFile();
-    await initDB(fileData || undefined);
+    if (!isInitialized()) {
+      const fileData = await fetchDatabaseFile();
+      await initDB(fileData || undefined);
+    }
 
     // 2. Check Existence & Ownership
     const existing = getExpenseById(id);
@@ -105,9 +111,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     // 6. Fetch Category for response
     // If categoryId changed, we fetch the new one, otherwise the old one
     const categoryId = mergedExpense.categoryId;
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
-    });
+    const category = getCategoryById(categoryId);
 
     return NextResponse.json({ ...mergedExpense, category });
   } catch (error) {

@@ -7,6 +7,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
+  session: {
+    strategy: "jwt",
+  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -22,35 +25,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider === "google" && user.id) {
-        try {
-          await prisma.account.updateMany({
-            where: {
-              userId: user.id,
-              provider: "google",
-            },
-            data: {
-              access_token: account.access_token,
-              expires_at: account.expires_at,
-              id_token: account.id_token,
-              scope: account.scope,
-              token_type: account.token_type,
-              // Only update refresh_token if new one is provided
-              ...(account.refresh_token
-                ? { refresh_token: account.refresh_token }
-                : {}),
-            },
-          });
-        } catch (error) {
-          console.error("Failed to update account tokens", error);
-        }
+    async jwt({ token, account }) {
+      if (account) {
+        // Initial sign in, save tokens to JWT
+        token.accessToken = account.access_token;
+        token.refreshToken = account.refresh_token;
+        token.expiresAt = account.expires_at;
       }
-      return true;
+      return token;
     },
-    async session({ session, user }) {
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = user.id;
+        session.user.id = token.sub as string;
+        // Pass tokens to session for API usage
+        // @ts-expect-error extending session type
+        session.accessToken = token.accessToken;
+        // @ts-expect-error extending session type
+        session.refreshToken = token.refreshToken;
       }
       return session;
     },
@@ -58,8 +49,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/login",
     error: "/auth/error",
-  },
-  session: {
-    strategy: "database",
   },
 });

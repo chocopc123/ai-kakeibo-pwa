@@ -16,7 +16,54 @@ export function BottomNav() {
   const isActive = (path: string) => pathname === path;
 
   const handleSave = async (data: any) => {
+    const newExpense = {
+      id: Math.random().toString(36).substr(2, 9), // Temporary ID
+      amount: Number(data.amount),
+      date: data.date,
+      note: data.note,
+      type: data.type,
+      categoryId: data.category.id,
+      category: data.category, // Include full category for display
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: "loading", // Placeholder
+    };
+
     try {
+      setIsDrawerOpen(false); // Close immediately
+
+      // Optimistic Update for Expenses List
+      await mutate(
+        "/api/expenses",
+        (currentData: any[] | undefined) => {
+          return [newExpense, ...(currentData || [])];
+        },
+        false // Do not revalidate immediately
+      );
+
+      // Optimistic Update for Stats (Approximate)
+      await mutate(
+        "/api/expenses/stats",
+        (currentStats: any | undefined) => {
+          if (!currentStats) return undefined;
+          const isExpense = data.type === "expense";
+          const amount = Number(data.amount);
+          return {
+            ...currentStats,
+            monthlyExpense: isExpense
+              ? currentStats.monthlyExpense + amount
+              : currentStats.monthlyExpense,
+            monthlyIncome: !isExpense
+              ? currentStats.monthlyIncome + amount
+              : currentStats.monthlyIncome,
+            totalAssets: isExpense
+              ? currentStats.totalAssets - amount
+              : currentStats.totalAssets + amount,
+          };
+        },
+        false
+      );
+
       const res = await fetch("/api/expenses", {
         method: "POST",
         headers: {
@@ -27,6 +74,7 @@ export function BottomNav() {
           date: data.date,
           categoryId: data.category.id, // Ensure we send ID
           note: data.note,
+          type: data.type,
         }),
       });
 
@@ -34,12 +82,15 @@ export function BottomNav() {
         throw new Error("Failed to save expense");
       }
 
-      // Revalidate the expense list
+      // Revalidate to get authoritative data (background)
       mutate("/api/expenses");
-      setIsDrawerOpen(false);
+      mutate("/api/expenses/stats");
     } catch (error) {
       console.error("Save error:", error);
       alert("保存に失敗しました。");
+      // Rollback
+      mutate("/api/expenses");
+      mutate("/api/expenses/stats");
     }
   };
 

@@ -33,16 +33,6 @@ export type Session = Prisma.SessionModel
  */
 export type User = Prisma.UserModel
 /**
- * Model Expense
- * 
- */
-export type Expense = Prisma.ExpenseModel
-/**
- * Model Category
- * 
- */
-export type Category = Prisma.CategoryModel
-/**
  * Model VerificationToken
  * 
  */

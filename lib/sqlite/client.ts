@@ -1,11 +1,39 @@
 import initSqlJs, { Database } from "sql.js";
-// Use the generated client path since we have custom output in schema.prisma
-import { Expense } from "@/lib/generated/client";
 import fs from "fs";
 import path from "path";
 
+// Define Schema Types locally since we removed them from Prisma
+export interface Category {
+  id: string;
+  userId: string;
+  label: string;
+  icon: string;
+  color: string;
+  parentId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Expense {
+  id: string;
+  userId: string;
+  amount: number;
+  date: Date;
+  note: string | null;
+  categoryId: string;
+  type: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Optional joined category
+  category?: Category | null;
+}
+
 let dbInstance: Database | null = null;
 let SQL: any = null;
+
+export function isInitialized() {
+  return !!dbInstance;
+}
 
 export async function initDB(data?: Uint8Array): Promise<Database> {
   if (dbInstance) {
@@ -18,15 +46,16 @@ export async function initDB(data?: Uint8Array): Promise<Database> {
   }
 
   if (!SQL) {
-    // Manually load the WASM binary to avoid path issues in Next.js
+    // Load WASM from public directory
     const wasmPath = path.join(
       process.cwd(),
-      "node_modules",
-      "sql.js",
-      "dist",
+      "public",
+      "wasm",
       "sql-wasm.wasm"
     );
-    const wasmBinary = new Uint8Array(fs.readFileSync(wasmPath));
+    const buffer = fs.readFileSync(wasmPath);
+    // Cast to any to avoid TS mismatch between Node Buffer and WASM ArrayBuffer expectation
+    const wasmBinary = buffer as any;
 
     SQL = await initSqlJs({
       wasmBinary,
@@ -54,9 +83,21 @@ export async function initDB(data?: Uint8Array): Promise<Database> {
       updatedAt TEXT NOT NULL
     );
     
+    CREATE TABLE IF NOT EXISTS categories (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      label TEXT NOT NULL,
+      icon TEXT NOT NULL,
+      color TEXT NOT NULL,
+      parentId TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+    
     CREATE INDEX IF NOT EXISTS idx_userId ON expenses(userId);
     CREATE INDEX IF NOT EXISTS idx_date ON expenses(date);
     CREATE INDEX IF NOT EXISTS idx_category ON expenses(categoryId);
+    CREATE INDEX IF NOT EXISTS idx_cat_userId ON categories(userId);
   `);
 
   return dbInstance!;
@@ -70,11 +111,22 @@ export function exportDB(): Uint8Array {
 }
 
 /**
- * Helper to convert SQL result row to Expense object
+ * Helpers
  */
+function rowToCategory(row: any[]): Category {
+  return {
+    id: row[0] as string,
+    userId: row[1] as string,
+    label: row[2] as string,
+    icon: row[3] as string,
+    color: row[4] as string,
+    parentId: row[5] as string | null,
+    createdAt: new Date(row[6] as string),
+    updatedAt: new Date(row[7] as string),
+  };
+}
+
 function rowToExpense(row: any[]): Expense {
-  // Ordered as per CREATE TABLE or SELECT * columns
-  // id, userId, amount, date, note, categoryId, type, createdAt, updatedAt
   return {
     id: row[0] as string,
     userId: row[1] as string,
@@ -85,19 +137,92 @@ function rowToExpense(row: any[]): Expense {
     type: row[6] as string,
     createdAt: new Date(row[7] as string),
     updatedAt: new Date(row[8] as string),
+    category: undefined,
   };
 }
 
-export function getExpenses(userId: string): Expense[] {
+// --- Category Operations ---
+
+export function getCategories(userId: string): Category[] {
   if (!dbInstance) throw new Error("DB not init");
   const stmt = dbInstance.prepare(
-    "SELECT * FROM expenses WHERE userId = ? ORDER BY date DESC"
+    "SELECT * FROM categories WHERE userId = ? ORDER BY createdAt ASC"
   );
+  stmt.bind([userId]);
+
+  const categories: Category[] = [];
+  while (stmt.step()) {
+    categories.push(rowToCategory(stmt.get()));
+  }
+  stmt.free();
+  return categories;
+}
+
+export function getCategoryById(id: string): Category | null {
+  if (!dbInstance) throw new Error("DB not init");
+  const stmt = dbInstance.prepare("SELECT * FROM categories WHERE id = ?");
+  stmt.bind([id]);
+
+  if (stmt.step()) {
+    const category = rowToCategory(stmt.get());
+    stmt.free();
+    return category;
+  }
+  stmt.free();
+  return null;
+}
+
+export function createCategory(category: Category) {
+  if (!dbInstance) throw new Error("DB not init");
+  const createdAtStr = category.createdAt.toISOString();
+  const updatedAtStr = category.updatedAt.toISOString();
+
+  dbInstance.run(
+    `INSERT INTO categories (id, userId, label, icon, color, parentId, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      category.id,
+      category.userId,
+      category.label,
+      category.icon,
+      category.color,
+      category.parentId,
+      createdAtStr,
+      updatedAtStr,
+    ]
+  );
+}
+
+// --- Expense Operations ---
+
+export function getExpenses(userId: string): Expense[] {
+  if (!dbInstance) throw new Error("DB not init");
+  // Join with categories to mimic Prisma include
+  const stmt = dbInstance.prepare(`
+    SELECT e.*, c.id, c.userId, c.label, c.icon, c.color, c.parentId, c.createdAt, c.updatedAt
+    FROM expenses e
+    LEFT JOIN categories c ON e.categoryId = c.id
+    WHERE e.userId = ? 
+    ORDER BY e.date DESC
+  `);
   stmt.bind([userId]);
 
   const expenses: Expense[] = [];
   while (stmt.step()) {
-    expenses.push(rowToExpense(stmt.get()));
+    const row = stmt.get();
+    // Expense columns: 0-8
+    const expenseRow = row.slice(0, 9);
+    const expense = rowToExpense(expenseRow);
+
+    // Category columns: 9-16. If c.id (index 9) is not null, we have a category
+    if (row[9]) {
+      const categoryRow = row.slice(9, 17);
+      expense.category = rowToCategory(categoryRow);
+    } else {
+      expense.category = null;
+    }
+
+    expenses.push(expense);
   }
   stmt.free();
   return expenses;
@@ -126,10 +251,8 @@ export function createExpense(expense: Expense) {
   const updatedAtStr = expense.updatedAt.toISOString();
 
   dbInstance.run(
-    `
-    INSERT INTO expenses (id, userId, amount, date, note, categoryId, type, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `,
+    `INSERT INTO expenses (id, userId, amount, date, note, categoryId, type, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       expense.id,
       expense.userId,
@@ -151,11 +274,9 @@ export function updateExpense(expense: Expense) {
   const updatedAtStr = new Date().toISOString(); // Update timestamp
 
   dbInstance.run(
-    `
-    UPDATE expenses 
-    SET amount = ?, date = ?, note = ?, categoryId = ?, type = ?, updatedAt = ?
-    WHERE id = ?
-  `,
+    `UPDATE expenses 
+     SET amount = ?, date = ?, note = ?, categoryId = ?, type = ?, updatedAt = ?
+     WHERE id = ?`,
     [
       expense.amount,
       dateStr,

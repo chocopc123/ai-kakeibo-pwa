@@ -4,6 +4,7 @@ import {
   initDB,
   getExpensesByDateRange,
   getAllExpensesForAssets,
+  isInitialized,
 } from "@/lib/sqlite/client";
 import { NextResponse } from "next/server";
 
@@ -20,8 +21,10 @@ export async function GET(req: Request) {
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
     // 1. Fetch & Init
-    const fileData = await fetchDatabaseFile();
-    await initDB(fileData || undefined);
+    if (!isInitialized()) {
+      const fileData = await fetchDatabaseFile();
+      await initDB(fileData || undefined);
+    }
 
     // 2. Calculate Monthly Stats
     const monthlyExpenses = getExpensesByDateRange(
