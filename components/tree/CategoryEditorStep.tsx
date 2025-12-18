@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ChevronLeft,
   X,
@@ -47,6 +47,8 @@ export default function CategoryEditorStep({
   onSaveCategory,
   onCancelEdit,
 }: CategoryEditorStepProps) {
+  const [showIconPicker, setShowIconPicker] = useState(false);
+
   return (
     <div className="flex flex-col h-full bg-white rounded-[32px] overflow-hidden relative">
       <div className="bg-white p-6 pb-4 border-b border-gray-100 z-10 sticky top-0">
@@ -191,14 +193,104 @@ export default function CategoryEditorStep({
                   </p>
                 </div>
 
-                <button className="relative group">
-                  <div className="w-24 h-24 rounded-full bg-linear-to-br from-indigo-50 to-purple-50 border-4 border-white shadow-xl flex items-center justify-center text-5xl group-hover:scale-105 transition-transform duration-300">
-                    {newCatIcon}
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-md text-indigo-600">
-                    <RefreshCw size={18} />
-                  </div>
-                </button>
+                <div className="flex flex-col items-center space-y-4">
+                  <button
+                    onClick={() => setShowIconPicker(!showIconPicker)}
+                    className="relative group cursor-pointer"
+                  >
+                    <div className="w-24 h-24 rounded-full bg-linear-to-br from-indigo-50 to-purple-50 border-4 border-white shadow-xl flex items-center justify-center text-5xl group-hover:scale-105 transition-transform duration-300">
+                      {newCatIcon}
+                    </div>
+                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-md text-indigo-600">
+                      <RefreshCw
+                        size={18}
+                        className={cn(
+                          showIconPicker && "rotate-180 transition-transform"
+                        )}
+                      />
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {showIconPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="w-full bg-gray-50 rounded-2xl p-3 border border-gray-100 overflow-hidden"
+                      >
+                        <div className="grid grid-cols-6 gap-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                          {[
+                            "🍔",
+                            "🍱",
+                            "🍽️",
+                            "☕",
+                            "🥦",
+                            "🍎",
+                            "🚕",
+                            "🚃",
+                            "🚲",
+                            "✈️",
+                            "⛽",
+                            "🏠",
+                            "🧻",
+                            "🚿",
+                            "💊",
+                            "💄",
+                            "👕",
+                            "👟",
+                            "🎮",
+                            "🎬",
+                            "📚",
+                            "🎨",
+                            "🎈",
+                            "🎁",
+                            "💰",
+                            "💳",
+                            "📈",
+                            "💼",
+                            "🏢",
+                            "🏫",
+                            "🐶",
+                            "🐱",
+                            "🌱",
+                            "☀️",
+                            "☁️",
+                            "🌙",
+                            "📁",
+                            "📝",
+                            "⚙️",
+                            "🔧",
+                            "📱",
+                            "💻",
+                            "⚡",
+                            "🔥",
+                            "🌈",
+                            "⭐",
+                            "❤️",
+                            "🔔",
+                          ].map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => {
+                                onIconChange(emoji);
+                                setShowIconPicker(false);
+                              }}
+                              className={cn(
+                                "w-10 h-10 flex items-center justify-center text-2xl rounded-xl transition-all active:scale-90",
+                                newCatIcon === emoji
+                                  ? "bg-indigo-100 border-2 border-indigo-400"
+                                  : "hover:bg-white"
+                              )}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 <div className="w-full space-y-3">
                   <div className="bg-gray-50 px-4 py-3 rounded-2xl border border-gray-100 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
