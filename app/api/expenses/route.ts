@@ -91,10 +91,13 @@ export async function POST(req: Request) {
     const newData = exportDB();
     await saveDatabaseFile(newData);
 
-    // 5. Return created expense (Client might need to refetch to get category details, or we can fetch it from sqlite)
-    // For simplicity, we just return the expense data. Ideally we should return with category.
-    // Let's rely on the client to optimize or refetch if needed, or we implement getExpenseById with join.
-    return NextResponse.json(newExpense);
+    // 5. Return created expense with category details
+    // We already have the DB initialized, so we can fetch the joined data easily
+    const createdWithCategory = getExpenses(session.user.id).find(
+      (e) => e.id === newExpense.id
+    );
+
+    return NextResponse.json(createdWithCategory || newExpense);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new NextResponse("Invalid request data", { status: 400 });

@@ -100,6 +100,102 @@ export async function initDB(data?: Uint8Array): Promise<Database> {
     CREATE INDEX IF NOT EXISTS idx_cat_userId ON categories(userId);
   `);
 
+  // Seed default categories if empty
+  const checkStmt = dbInstance!.prepare("SELECT COUNT(*) FROM categories");
+  if (checkStmt.step()) {
+    const count = checkStmt.get()[0] as number;
+    if (count === 0) {
+      // Seed defaults
+      const defaults = [
+        {
+          id: "food",
+          label: "Food",
+          icon: "🍔",
+          color: "bg-orange-100 text-orange-600",
+        },
+        {
+          id: "lunch",
+          label: "Lunch",
+          icon: "🍱",
+          color: "bg-orange-50 text-orange-500",
+          parentId: "food",
+        },
+        {
+          id: "dinner",
+          label: "Dinner",
+          icon: "🍽️",
+          color: "bg-orange-50 text-orange-500",
+          parentId: "food",
+        },
+        {
+          id: "cafe",
+          label: "Cafe",
+          icon: "☕",
+          color: "bg-orange-50 text-orange-500",
+          parentId: "food",
+        },
+        {
+          id: "grocery",
+          label: "Grocery",
+          icon: "🥦",
+          color: "bg-orange-50 text-orange-500",
+          parentId: "food",
+        },
+        {
+          id: "transport",
+          label: "Transport",
+          icon: "🚕",
+          color: "bg-blue-100 text-blue-600",
+        },
+        {
+          id: "train",
+          label: "Train",
+          icon: "🚃",
+          color: "bg-blue-50 text-blue-500",
+          parentId: "transport",
+        },
+        {
+          id: "taxi",
+          label: "Taxi",
+          icon: "🚕",
+          color: "bg-blue-50 text-blue-500",
+          parentId: "transport",
+        },
+        {
+          id: "daily",
+          label: "Daily",
+          icon: "🧻",
+          color: "bg-green-100 text-green-600",
+        },
+        {
+          id: "ent",
+          label: "Entertain",
+          icon: "🎮",
+          color: "bg-purple-100 text-purple-600",
+        },
+      ];
+
+      const now = new Date().toISOString();
+      defaults.forEach((c) => {
+        dbInstance!.run(
+          `INSERT INTO categories (id, userId, label, icon, color, parentId, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            c.id,
+            "system",
+            c.label,
+            c.icon,
+            c.color,
+            c.parentId || null,
+            now,
+            now,
+          ]
+        );
+      });
+    }
+  }
+  checkStmt.free();
+
   return dbInstance!;
 }
 
