@@ -130,6 +130,11 @@ export function CalculatorDrawer({
   const [newCatName, setNewCatName] = useState("");
   const [newCatIcon, setNewCatIcon] = useState("📁");
 
+  // Account State
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+    "cash"
+  );
+
   // -- Calculator Logic --
   const handleInput = (val: string) => {
     const isOperator = ["+", "-", "*", "/"].includes(val);
@@ -179,6 +184,9 @@ export function CalculatorDrawer({
   const { data: apiCategories, mutate: mutateCategories } = useSWR<any[]>(
     isOpen ? "/api/categories" : null
   );
+  const { data: apiAccounts } = useSWR<any[]>(isOpen ? "/api/accounts" : null);
+
+  const accounts = apiAccounts || [];
 
   // Helper to transform flat categories into hierarchy
   const buildHierarchy = (flat: any[]): Category[] => {
@@ -288,7 +296,10 @@ export function CalculatorDrawer({
       onSave({
         type: transactionType,
         amount: finalAmount,
-        category: selectedCategory,
+        categoryId: selectedCategory.id,
+        accountId: selectedAccountId,
+        category: selectedCategory, // Include full object
+        account: accounts.find((a) => a.id === selectedAccountId), // Include full object
         date: new Date().toISOString(),
         note,
         customFields: customFields.filter((f) => f.value),
@@ -303,6 +314,7 @@ export function CalculatorDrawer({
     setTransactionType("expense");
     setNote("");
     setFinalAmount(null);
+    setSelectedAccountId("cash");
     setCurrentPickerPath([]);
     onClose();
   };
@@ -384,6 +396,9 @@ export function CalculatorDrawer({
                   <ExpenseDetailsStep
                     amount={finalAmount}
                     category={selectedCategory}
+                    accounts={accounts}
+                    selectedAccountId={selectedAccountId}
+                    onSelectAccount={setSelectedAccountId}
                     note={note}
                     customFields={customFields}
                     onBack={() => setStep("calculator")}

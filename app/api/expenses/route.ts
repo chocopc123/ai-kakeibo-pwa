@@ -19,6 +19,7 @@ const expenseSchema = z.object({
     .datetime({ offset: true })
     .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   categoryId: z.string().min(1),
+  accountId: z.string().optional(), // Added
   note: z.string().optional(),
   type: z.enum(["expense", "income"]).optional().default("expense"),
 });
@@ -34,13 +35,11 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // 2. Query Expenses (SQLite) - Includes Category Join automatically
     if (!isInitialized()) {
       const fileData = await fetchDatabaseFile();
       await initDB(fileData || undefined);
     }
 
-    // 2. Query Expenses (SQLite) - Includes Category Join automatically
     const allExpenses = getExpenses(session.user.id);
 
     // 3. Manual Pagination (Memory based)
@@ -65,34 +64,29 @@ export async function POST(req: Request) {
 
     const date = new Date(body.date);
 
-    // 6. Fetch & Init
     if (!isInitialized()) {
       const fileData = await fetchDatabaseFile();
       await initDB(fileData || undefined);
     }
 
-    // 2. Create Object
-    const newExpense = {
+    const newExpense: any = {
       id: crypto.randomUUID(),
       userId: session.user.id,
       amount: body.amount,
       date: date,
       categoryId: body.categoryId,
+      accountId: body.accountId || null, // Added
       note: body.note ?? null,
       type: body.type,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    // 3. Insert into SQLite
     createExpense(newExpense);
 
-    // 4. Export & Save
     const newData = exportDB();
     await saveDatabaseFile(newData);
 
-    // 5. Return created expense with category details
-    // We already have the DB initialized, so we can fetch the joined data easily
     const createdWithCategory = getExpenses(session.user.id).find(
       (e) => e.id === newExpense.id
     );

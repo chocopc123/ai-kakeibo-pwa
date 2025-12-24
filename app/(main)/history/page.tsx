@@ -112,12 +112,7 @@ export default function HistoryPage() {
 
   // Calculate Total Limit / Stats for the header card
   // Mocking "Limit" logic for now, or just show Total Expense
-  const currentMonthTotal = groupedData.reduce(
-    (sum, g) =>
-      sum +
-      g.items.filter((i) => i.amount < 0).reduce((s, i) => s + i.amount, 0),
-    0
-  );
+  const currentMonthTotal = groupedData.reduce((sum, g) => sum + g.total, 0);
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-32 flex flex-col">

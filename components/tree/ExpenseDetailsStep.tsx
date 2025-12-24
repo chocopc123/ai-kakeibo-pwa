@@ -1,16 +1,13 @@
 import React from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Settings2,
-  PlusCircle,
-  Check,
-} from "lucide-react";
+import { ChevronLeft, Settings2, PlusCircle, Check } from "lucide-react";
 import { Category } from "@/types/ui";
 
 interface ExpenseDetailsStepProps {
   amount: number | null;
   category: Category;
+  accounts: any[]; // Add this
+  selectedAccountId: string | null; // Add this
+  onSelectAccount: (id: string) => void; // Add this
   note: string;
   customFields: { label: string; value: string }[];
   onBack: () => void;
@@ -25,6 +22,9 @@ interface ExpenseDetailsStepProps {
 export default function ExpenseDetailsStep({
   amount,
   category,
+  accounts,
+  selectedAccountId,
+  onSelectAccount,
   note,
   customFields,
   onBack,
@@ -36,8 +36,8 @@ export default function ExpenseDetailsStep({
   type,
 }: ExpenseDetailsStepProps) {
   const isIncome = type === "income";
-  const themeColor = isIncome ? "text-green-600" : "text-indigo-600";
-  const themeBg = isIncome ? "bg-green-50" : "bg-indigo-50";
+  const themeColor = isIncome ? "text-green-600" : "text-emerald-600";
+  const themeBg = isIncome ? "bg-green-50" : "bg-emerald-50";
   const themeButton = isIncome
     ? "from-green-600 to-emerald-600 shadow-green-500/30"
     : "from-indigo-600 to-purple-600 shadow-indigo-500/30";
@@ -65,25 +65,46 @@ export default function ExpenseDetailsStep({
         </div>
       </div>
 
-      {/* Category Selection Trigger */}
-      <div className="mb-6 space-y-3">
-        <label className="text-xs font-bold text-gray-400 uppercase">
-          Category
-        </label>
-        <button
-          onClick={onChangeCategory}
-          className="w-full bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between hover:border-indigo-200 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{category.icon}</span>
-            <span className="font-bold text-gray-900">{category.label}</span>
-          </div>
-          <div
-            className={`flex items-center gap-2 ${themeColor} text-sm font-bold`}
+      {/* Category & Account Selection */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="space-y-3">
+          <label className="text-xs font-bold text-gray-400 uppercase">
+            Category
+          </label>
+          <button
+            onClick={onChangeCategory}
+            className="w-full bg-white p-4 rounded-2xl border border-gray-100 flex flex-col items-center gap-2 hover:border-indigo-200 transition-colors shadow-sm"
           >
-            Change <ChevronRight size={16} />
+            <span className="text-3xl">{category.icon}</span>
+            <span className="font-bold text-gray-900 text-sm truncate w-full text-center">
+              {category.label}
+            </span>
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <label className="text-xs font-bold text-gray-400 uppercase">
+            Account
+          </label>
+          <div className="flex gap-2 relative overflow-hidden">
+            {accounts.map((acc) => (
+              <button
+                key={acc.id}
+                onClick={() => onSelectAccount(acc.id)}
+                className={`flex-1 p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 shadow-sm ${
+                  selectedAccountId === acc.id
+                    ? "bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500/10"
+                    : "bg-white border-gray-100 hover:border-gray-200"
+                }`}
+              >
+                <span className="text-xl">{acc.icon}</span>
+                <span className="text-[10px] font-black text-gray-900 truncate w-full text-center">
+                  {acc.name}
+                </span>
+              </button>
+            ))}
           </div>
-        </button>
+        </div>
       </div>
 
       {/* Note */}

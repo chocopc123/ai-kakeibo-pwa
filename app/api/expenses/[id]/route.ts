@@ -21,6 +21,7 @@ const expensePatchSchema = z.object({
     .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
     .optional(),
   categoryId: z.string().min(1).optional(),
+  accountId: z.string().optional(), // Added
   note: z.string().optional(),
   type: z.enum(["expense", "income"]).optional(),
 });
@@ -40,22 +41,18 @@ export async function DELETE(req: Request, context: RouteContext) {
 
     const { id } = await context.params;
 
-    // 1. Fetch & Init
     if (!isInitialized()) {
       const fileData = await fetchDatabaseFile();
       await initDB(fileData || undefined);
     }
 
-    // 2. Check Existence & Ownership
     const existing = getExpenseById(id);
     if (!existing || existing.userId !== session.user.id) {
       return new NextResponse("Not Found or Unauthorized", { status: 404 });
     }
 
-    // 3. Delete
     deleteExpense(id);
 
-    // 4. Save
     const newData = exportDB();
     await saveDatabaseFile(newData);
 
@@ -77,39 +74,37 @@ export async function PATCH(req: Request, context: RouteContext) {
     const json = await req.json();
     const body = expensePatchSchema.parse(json);
 
-    // 1. Fetch & Init
     if (!isInitialized()) {
       const fileData = await fetchDatabaseFile();
       await initDB(fileData || undefined);
     }
 
-    // 2. Check Existence & Ownership
     const existing = getExpenseById(id);
     if (!existing || existing.userId !== session.user.id) {
       return new NextResponse("Not Found or Unauthorized", { status: 404 });
     }
 
-    // 3. Prepare Update
+    // Capture old values for balance sync
+    const oldAmount = existing.amount;
+    const oldType = existing.type;
+    const oldAccountId = existing.accountId;
+
     const updateData: any = { ...body };
     if (body.date) {
       updateData.date = new Date(body.date);
     }
 
-    // Merge existing with updates locally to pass to updateExpense helper
     const mergedExpense = {
       ...existing,
       ...updateData,
     };
 
-    // 4. Update in SQLite
-    updateExpense(mergedExpense);
+    // Update in SQLite with balance sync logic
+    updateExpense(mergedExpense, oldAmount, oldType, oldAccountId);
 
-    // 5. Save
     const newData = exportDB();
     await saveDatabaseFile(newData);
 
-    // 6. Fetch Category for response
-    // If categoryId changed, we fetch the new one, otherwise the old one
     const categoryId = mergedExpense.categoryId;
     const category = getCategoryById(categoryId);
 

@@ -3,7 +3,7 @@ import { fetchDatabaseFile } from "@/lib/google/storage";
 import {
   initDB,
   getExpensesByDateRange,
-  getAllExpensesForAssets,
+  getTotalAssets,
   isInitialized,
 } from "@/lib/sqlite/client";
 import { NextResponse } from "next/server";
@@ -17,8 +17,18 @@ export async function GET(req: Request) {
 
     const userId = session.user.id;
     const now = new Date();
+    // Start of month (local time)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    // End of month (local time, set to late night to include all transactions)
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
 
     // 1. Fetch & Init
     if (!isInitialized()) {
@@ -42,13 +52,7 @@ export async function GET(req: Request) {
       .reduce((sum, e) => sum + e.amount, 0);
 
     // 3. Calculate All-time Stats for Total Assets
-    const totals = getAllExpensesForAssets(userId);
-
-    // totals is array of { type: string, total: number }
-    const totalExpense = totals.find((t) => t.type === "expense")?.total || 0;
-    const totalIncome = totals.find((t) => t.type === "income")?.total || 0;
-
-    const totalAssets = totalIncome - totalExpense;
+    const totalAssets = getTotalAssets(userId);
 
     return NextResponse.json({
       monthlyExpense,

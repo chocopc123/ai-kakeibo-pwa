@@ -17,20 +17,22 @@ export function BottomNav() {
 
   const handleSave = async (data: any) => {
     const newExpense = {
-      id: Math.random().toString(36).substr(2, 9), // Temporary ID
+      id: Math.random().toString(36).substr(2, 9),
       amount: Number(data.amount),
-      date: data.date,
+      date: new Date(data.date), // Ensure Date object
       note: data.note,
       type: data.type,
-      categoryId: data.category.id,
-      category: data.category, // Include full category for display
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userId: "loading", // Placeholder
+      categoryId: data.categoryId,
+      accountId: data.accountId,
+      category: data.category,
+      account: data.account,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userId: "loading",
     };
 
     try {
-      setIsDrawerOpen(false); // Close immediately
+      setIsDrawerOpen(false);
 
       // Optimistic Update for Expenses List
       await mutate(
@@ -38,10 +40,10 @@ export function BottomNav() {
         (currentData: any[] | undefined) => {
           return [newExpense, ...(currentData || [])];
         },
-        false // Do not revalidate immediately
+        false
       );
 
-      // Optimistic Update for Stats (Approximate)
+      // Optimistic Update for Stats
       await mutate(
         "/api/expenses/stats",
         (currentStats: any | undefined) => {
@@ -64,6 +66,23 @@ export function BottomNav() {
         false
       );
 
+      // Optimistic Update for Accounts
+      await mutate(
+        "/api/accounts",
+        (currentAccounts: any[] | undefined) => {
+          if (!currentAccounts) return undefined;
+          const isExpense = data.type === "expense";
+          const amount = Number(data.amount);
+          const diff = isExpense ? -amount : amount;
+          return currentAccounts.map((acc) =>
+            acc.id === data.accountId
+              ? { ...acc, balance: acc.balance + diff }
+              : acc
+          );
+        },
+        false
+      );
+
       const res = await fetch("/api/expenses", {
         method: "POST",
         headers: {
@@ -72,7 +91,8 @@ export function BottomNav() {
         body: JSON.stringify({
           amount: data.amount,
           date: data.date,
-          categoryId: data.category.id, // Ensure we send ID
+          categoryId: data.categoryId,
+          accountId: data.accountId,
           note: data.note,
           type: data.type,
         }),
@@ -82,15 +102,16 @@ export function BottomNav() {
         throw new Error("Failed to save expense");
       }
 
-      // Revalidate to get authoritative data (background)
+      // Revalidate
       mutate("/api/expenses");
       mutate("/api/expenses/stats");
+      mutate("/api/accounts");
     } catch (error) {
       console.error("Save error:", error);
       alert("保存に失敗しました。");
-      // Rollback
       mutate("/api/expenses");
       mutate("/api/expenses/stats");
+      mutate("/api/accounts");
     }
   };
 
